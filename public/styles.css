@@ -60,6 +60,30 @@ h1 {
     background-color: #2980b9;
 }
 
+.view-switcher {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    gap: 10px;
+}
+
+.view-switcher button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: 1px solid #bdc3c7;
+    background-color: #fff;
+    color: #34495e;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.view-switcher button.active {
+    background-color: #3498db;
+    color: white;
+    border-color: #3498db;
+}
+
 .todo-section {
     display: flex;
     gap: 40px;

@@ -1,28 +1,42 @@
 document.addEventListener('DOMContentLoaded', () => {
     const newTaskInput = document.getElementById('new-task');
     const taskTypeSelect = document.getElementById('task-type');
+    const taskPeriodSelect = document.getElementById('task-period');
     const addTaskBtn = document.getElementById('add-task-btn');
     const personalTasksList = document.getElementById('personal-tasks');
     const officialTasksList = document.getElementById('official-tasks');
+    const dailyViewBtn = document.getElementById('daily-view-btn');
+    const weeklyViewBtn = document.getElementById('weekly-view-btn');
+    const personalTitle = document.getElementById('personal-title');
+    const officialTitle = document.getElementById('official-title');
 
     const API_URL = '/api/tasks';
+    let allTasks = [];
+    let currentPeriod = 'daily';
 
     // Fetch and render tasks on page load
     const fetchTasks = async () => {
         try {
             const response = await fetch(API_URL);
-            const tasks = await response.json();
-            renderTasks(tasks);
+            allTasks = await response.json();
+            renderTasks();
         } catch (error) {
             console.error('Error fetching tasks:', error);
         }
     };
 
-    // Render tasks to the appropriate lists
-    const renderTasks = (tasks) => {
+    // Update titles and filter tasks based on the current period
+    const renderTasks = () => {
         personalTasksList.innerHTML = '';
         officialTasksList.innerHTML = '';
-        tasks.forEach(task => {
+
+        const capitalizedPeriod = currentPeriod.charAt(0).toUpperCase() + currentPeriod.slice(1);
+        personalTitle.textContent = `Personal (${capitalizedPeriod})`;
+        officialTitle.textContent = `Official (${capitalizedPeriod})`;
+
+        const filteredTasks = allTasks.filter(task => task.period === currentPeriod);
+
+        filteredTasks.forEach(task => {
             const list = task.type === 'personal' ? personalTasksList : officialTasksList;
             const taskElement = createTaskElement(task);
             list.appendChild(taskElement);
@@ -63,17 +77,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const addTask = async () => {
         const text = newTaskInput.value.trim();
         const type = taskTypeSelect.value;
+        const period = taskPeriodSelect.value;
         if (text === '') return;
 
         try {
             const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, type }),
+                body: JSON.stringify({ text, type, period }),
             });
             const newTask = await response.json();
-            const list = newTask.type === 'personal' ? personalTasksList : officialTasksList;
-            list.appendChild(createTaskElement(newTask));
+            allTasks.push(newTask);
+            renderTasks(); // Re-render to apply filters
             newTaskInput.value = '';
         } catch (error) {
             console.error('Error adding task:', error);
@@ -88,7 +103,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ completed }),
             });
-            fetchTasks(); // Re-fetch to update UI
+            const task = allTasks.find(t => t.id === id);
+            if (task) {
+                task.completed = completed;
+            }
+            renderTasks();
         } catch (error) {
             console.error('Error updating task:', error);
         }
@@ -98,10 +117,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteTask = async (id) => {
         try {
             await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-            fetchTasks(); // Re-fetch to update UI
+            allTasks = allTasks.filter(t => t.id !== id);
+            renderTasks();
         } catch (error) {
             console.error('Error deleting task:', error);
         }
+    };
+
+    // Switch between daily and weekly views
+    const setView = (period) => {
+        currentPeriod = period;
+        if (period === 'daily') {
+            dailyViewBtn.classList.add('active');
+            weeklyViewBtn.classList.remove('active');
+        } else {
+            weeklyViewBtn.classList.add('active');
+            dailyViewBtn.classList.remove('active');
+        }
+        renderTasks();
     };
 
     addTaskBtn.addEventListener('click', addTask);
@@ -110,6 +143,9 @@ document.addEventListener('DOMContentLoaded', () => {
             addTask();
         }
     });
+
+    dailyViewBtn.addEventListener('click', () => setView('daily'));
+    weeklyViewBtn.addEventListener('click', () => setView('weekly'));
 
     fetchTasks();
 });
