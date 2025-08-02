@@ -8,11 +8,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // In-memory data store
 let tasks = [
-    { id: 1, text: 'Submit performance review', type: 'official', completed: false },
-    { id: 2, text: 'Buy groceries', type: 'personal', completed: true },
-    { id: 3, text: 'Schedule team meeting', type: 'official', completed: false },
+    { id: 1, text: 'Submit performance review', type: 'official', period: 'daily', completed: false },
+    { id: 2, text: 'Buy groceries', type: 'personal', period: 'weekly', completed: true },
+    { id: 3, text: 'Schedule team meeting', type: 'official', period: 'daily', completed: false },
+    { id: 4, text: 'Plan weekend trip', type: 'personal', period: 'weekly', completed: false },
 ];
-let nextId = 4;
+let nextId = 5;
 
 // API routes
 app.get('/api/tasks', (req, res) => {
@@ -20,14 +21,15 @@ app.get('/api/tasks', (req, res) => {
 });
 
 app.post('/api/tasks', (req, res) => {
-    const { text, type } = req.body;
-    if (!text || !type) {
-        return res.status(400).json({ error: 'Text and type are required' });
+    const { text, type, period } = req.body;
+    if (!text || !type || !period) {
+        return res.status(400).json({ error: 'Text, type, and period are required' });
     }
     const newTask = {
         id: nextId++,
         text,
         type,
+        period,
         completed: false,
     };
     tasks.push(newTask);

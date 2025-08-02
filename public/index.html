@@ -9,21 +9,29 @@
 <body>
     <div class="container">
         <h1>To-Do List</h1>
+        <div class="view-switcher">
+            <button id="daily-view-btn" class="active">Daily</button>
+            <button id="weekly-view-btn">Weekly</button>
+        </div>
         <div class="input-section">
             <input type="text" id="new-task" placeholder="Add a new task...">
             <select id="task-type">
                 <option value="personal">Personal</option>
                 <option value="official">Official</option>
             </select>
+            <select id="task-period">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+            </select>
             <button id="add-task-btn">Add Task</button>
         </div>
         <div class="todo-section">
             <div class="task-list-container">
-                <h2>Personal</h2>
+                <h2 id="personal-title">Personal</h2>
                 <ul id="personal-tasks" class="task-list"></ul>
             </div>
             <div class="task-list-container">
-                <h2>Official</h2>
+                <h2 id="official-title">Official</h2>
                 <ul id="official-tasks" class="task-list"></ul>
             </div>
         </div>
