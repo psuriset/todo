@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 
-const API_URL = 'http://192.168.1.134:3000/api/tasks';
+const API_URL = 'http://localhost:3000/api/tasks';
 
 const App = () => {
   const [tasks, setTasks] = useState([]);
