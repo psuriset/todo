@@ -1,4 +1,8 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    const authSection = document.getElementById('auth-section');
+    const appSection = document.getElementById('app-section');
+    const userProfile = document.getElementById('user-profile');
+
     const newTaskInput = document.getElementById('new-task');
     const taskTypeSelect = document.getElementById('task-type');
     const taskPeriodSelect = document.getElementById('task-period');
@@ -13,11 +17,50 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_URL = '/api/tasks';
     let allTasks = [];
     let currentPeriod = 'daily';
+    let user = null;
 
-    // Fetch and render tasks on page load
+    // Check user authentication status
+    const checkAuth = async () => {
+        try {
+            const response = await fetch('/api/user');
+            user = await response.json();
+
+            if (user) {
+                authSection.style.display = 'none';
+                appSection.style.display = 'block';
+                renderUserProfile();
+                fetchTasks();
+            } else {
+                authSection.style.display = 'block';
+                appSection.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('Error checking auth:', error);
+            authSection.style.display = 'block';
+            appSection.style.display = 'none';
+        }
+    };
+
+    const renderUserProfile = () => {
+        if (!user) return;
+        userProfile.innerHTML = `
+            <span>Welcome, ${user.displayName}!</span>
+            <a href="/auth/logout" id="logout-btn">Logout</a>
+        `;
+    };
+
+    // Fetch and render tasks
     const fetchTasks = async () => {
+        if (!user) return;
         try {
             const response = await fetch(API_URL);
+            if (!response.ok) {
+                if (response.status === 401) {
+                    // Not authorized, likely session expired
+                    window.location.href = '/';
+                }
+                throw new Error('Failed to fetch tasks');
+            }
             allTasks = await response.json();
             renderTasks();
         } catch (error) {
@@ -25,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Update titles and filter tasks based on the current period
+    // Render tasks based on the current view
     const renderTasks = () => {
         personalTasksList.innerHTML = '';
         officialTasksList.innerHTML = '';
@@ -88,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const newTask = await response.json();
             allTasks.push(newTask);
-            renderTasks(); // Re-render to apply filters
+            renderTasks();
             newTaskInput.value = '';
         } catch (error) {
             console.error('Error adding task:', error);
@@ -147,5 +190,6 @@ document.addEventListener('DOMContentLoaded', () => {
     dailyViewBtn.addEventListener('click', () => setView('daily'));
     weeklyViewBtn.addEventListener('click', () => setView('weekly'));
 
-    fetchTasks();
+    // Initial load
+    checkAuth();
 });
