@@ -6,6 +6,8 @@ body {
     padding: 20px;
     display: flex;
     justify-content: center;
+    align-items: center;
+    min-height: 100vh;
 }
 
 .container {
@@ -14,13 +16,76 @@ body {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
     width: 100%;
     max-width: 800px;
-    padding: 30px;
+    padding: 40px;
+}
+
+#auth-section {
+    text-align: center;
+}
+
+.auth-buttons {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    align-items: center;
+}
+
+.auth-btn {
+    padding: 12px 25px;
+    border-radius: 8px;
+    text-decoration: none;
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+    display: inline-block;
+    width: 250px;
+    text-align: center;
+    transition: background-color 0.3s;
+}
+
+.auth-btn.google { background-color: #DB4437; }
+.auth-btn.google:hover { background-color: #C33D2E; }
+.auth-btn.facebook { background-color: #4267B2; }
+.auth-btn.facebook:hover { background-color: #365899; }
+.auth-btn.apple { background-color: #000000; }
+.auth-btn.apple:hover { background-color: #333333; }
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+#user-profile {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#user-profile span {
+    font-weight: 500;
+}
+
+#logout-btn {
+    padding: 8px 15px;
+    border: none;
+    background-color: #e74c3c;
+    color: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+#logout-btn:hover {
+    background-color: #c0392b;
 }
 
 h1 {
-    text-align: center;
     color: #2c3e50;
-    margin-bottom: 30px;
+    margin: 0;
 }
 
 .input-section {
@@ -37,7 +102,7 @@ h1 {
     font-size: 16px;
 }
 
-#task-type {
+#task-type, #task-period {
     padding: 12px;
     border: 1px solid #ddd;
     border-radius: 8px;
