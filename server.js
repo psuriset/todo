@@ -23,6 +23,7 @@ app.use(passport.session());
 
 // User store (in-memory for this example)
 const users = {};
+let nextUserId = 1;
 
 passport.serializeUser((user, done) => {
     done(null, user.id);
@@ -39,44 +40,63 @@ passport.use(new GoogleStrategy({
     clientSecret: process.env.GOOGLE_CLIENT_SECRET, // Replace with your Google Client Secret
     callbackURL: '/auth/google/callback',
 }, (accessToken, refreshToken, profile, done) => {
-    const user = {
-        id: profile.id,
-        displayName: profile.displayName,
-        provider: 'google',
-    };
-    users[user.id] = user;
+    let user = Object.values(users).find(u => u.providerId === profile.id && u.provider === 'google');
+
+    if (!user) {
+        user = {
+            id: nextUserId++,
+            providerId: profile.id,
+            displayName: profile.displayName,
+            provider: 'google',
+            role: Object.keys(users).length === 0 ? 'admin' : 'user', // First user is admin
+        };
+        users[user.id] = user;
+    }
+
     return done(null, user);
 }));
 
 // Facebook Strategy
 passport.use(new FacebookStrategy({
-    clientID: 'YOUR_FACEBOOK_APP_ID', // Replace with your Facebook App ID
-    clientSecret: 'YOUR_FACEBOOK_APP_SECRET', // Replace with your Facebook App Secret
+    clientID: process.env.FACEBOOK_APP_ID, // Replace with your Facebook App ID
+    clientSecret: process.env.FACEBOOK_APP_SECRET, // Replace with your Facebook App Secret
     callbackURL: '/auth/facebook/callback',
 }, (accessToken, refreshToken, profile, done) => {
-    const user = {
-        id: profile.id,
-        displayName: profile.displayName,
-        provider: 'facebook',
-    };
-    users[user.id] = user;
+    let user = Object.values(users).find(u => u.providerId === profile.id && u.provider === 'facebook');
+
+    if (!user) {
+        user = {
+            id: nextUserId++,
+            providerId: profile.id,
+            displayName: profile.displayName,
+            provider: 'facebook',
+            role: Object.keys(users).length === 0 ? 'admin' : 'user',
+        };
+        users[user.id] = user;
+    }
     return done(null, user);
 }));
 
 // Apple Strategy
 passport.use(new AppleStrategy({
-    clientID: 'YOUR_APPLE_CLIENT_ID', // Replace with your Apple Client ID
-    teamID: 'YOUR_APPLE_TEAM_ID', // Replace with your Apple Team ID
-    keyID: 'YOUR_APPLE_KEY_ID', // Replace with your Apple Key ID
-    privateKeyLocation: path.join(__dirname, 'AuthKey.p8'), // Path to your .p8 key file
+    clientID: process.env.APPLE_CLIENT_ID, // Your Apple Service ID
+    teamID: process.env.APPLE_TEAM_ID, // Your Apple Team ID
+    keyID: process.env.APPLE_KEY_ID, // Your Apple Key ID
+    privateKeyLocation: path.join(__dirname, process.env.APPLE_PRIVATE_KEY_FILE), // Path to your .p8 key file
     callbackURL: '/auth/apple/callback',
 }, (accessToken, refreshToken, profile, done) => {
-    const user = {
-        id: profile.id,
-        displayName: `${profile.name.firstName} ${profile.name.lastName}`,
-        provider: 'apple',
-    };
-    users[user.id] = user;
+    let user = Object.values(users).find(u => u.providerId === profile.id && u.provider === 'apple');
+
+    if (!user) {
+        user = {
+            id: nextUserId++,
+            providerId: profile.id,
+            displayName: `${profile.name.firstName} ${profile.name.lastName}`,
+            provider: 'apple',
+            role: Object.keys(users).length === 0 ? 'admin' : 'user',
+        };
+        users[user.id] = user;
+    }
     return done(null, user);
 }));
 
@@ -85,10 +105,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // In-memory data store
 let tasks = [
-    { id: 1, text: 'Submit performance review', type: 'official', period: 'daily', completed: false },
-    { id: 2, text: 'Buy groceries', type: 'personal', period: 'weekly', completed: true },
-    { id: 3, text: 'Schedule team meeting', type: 'official', period: 'daily', completed: false },
-    { id: 4, text: 'Plan weekend trip', type: 'personal', period: 'weekly', completed: false },
+    { id: 1, text: 'Submit performance review', type: 'official', period: 'daily', completed: false, owner: 1 },
+    { id: 2, text: 'Buy groceries', type: 'personal', period: 'weekly', completed: true, owner: 1 },
+    { id: 3, text: 'Schedule team meeting', type: 'official', period: 'daily', completed: false, owner: 2 },
+    { id: 4, text: 'Plan weekend trip', type: 'personal', period: 'weekly', completed: false, owner: 2 },
 ];
 let nextId = 5;
 
@@ -98,6 +118,14 @@ const ensureAuthenticated = (req, res, next) => {
         return next();
     }
     res.status(401).json({ error: 'Unauthorized' });
+};
+
+// RBAC Middleware
+const ensureAdmin = (req, res, next) => {
+    if (req.user && req.user.role === 'admin') {
+        return next();
+    }
+    res.status(403).json({ error: 'Forbidden' });
 };
 
 // Authentication routes
@@ -133,7 +161,11 @@ app.get('/api/user', (req, res) => {
 
 // API routes
 app.get('/api/tasks', ensureAuthenticated, (req, res) => {
-    res.json(tasks);
+    if (req.user.role === 'admin') {
+        res.json(tasks); // Admins see all tasks
+    } else {
+        res.json(tasks.filter(t => t.owner === req.user.id)); // Users see only their tasks
+    }
 });
 
 app.post('/api/tasks', ensureAuthenticated, (req, res) => {
@@ -147,6 +179,7 @@ app.post('/api/tasks', ensureAuthenticated, (req, res) => {
         type,
         period,
         completed: false,
+        owner: req.user.id,
     };
     tasks.push(newTask);
     res.status(201).json(newTask);
@@ -159,14 +192,31 @@ app.put('/api/tasks/:id', ensureAuthenticated, (req, res) => {
     if (!task) {
         return res.status(404).json({ error: 'Task not found' });
     }
+    if (task.owner !== req.user.id && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
     task.completed = completed;
     res.json(task);
 });
 
 app.delete('/api/tasks/:id', ensureAuthenticated, (req, res) => {
     const { id } = req.params;
+    const task = tasks.find(t => t.id === parseInt(id));
+    if (!task) {
+        // To prevent leaking information, we don't tell the user if the task
+        // ever existed. We just say it was successful.
+        return res.status(204).send();
+    }
+    if (task.owner !== req.user.id && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
     tasks = tasks.filter(t => t.id !== parseInt(id));
     res.status(204).send();
+});
+
+// Admin route to view all users
+app.get('/api/users', ensureAuthenticated, ensureAdmin, (req, res) => {
+    res.json(Object.values(users));
 });
 
 // Serve the frontend
